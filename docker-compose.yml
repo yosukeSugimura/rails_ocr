@@ -1,0 +1,36 @@
+version: '3'
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./tmp/db:/var/lib/postgresql/data
+  worker:
+    build: .
+    environment:
+      - "RAILS_ENV=development"
+      - "REDIS_URL=redis://redis:6379"
+    volumes:
+      - ".:/var/myapp"
+    depends_on:
+      - "redis"
+    command: sidekiq
+  redis:
+    image: redis:4.0
+    volumes:
+      - "redis:/data"
+    command: redis-server --appendonly yes
+  web:
+    build: .
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+    volumes:
+      - .:/myapp
+    ports:
+      - "3000:3000"
+    tty: true
+    stdin_open: true
+    depends_on:
+      - db
+      - "redis"
+volumes:
+  redis:
+    driver: local
